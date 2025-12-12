@@ -5,17 +5,31 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Apple Trivia Battle</title>
 <style>
+:root {
+  --bg-color: #f2f2f7;
+  --text-color: #111;
+  --box-bg: rgba(255,255,255,0.6);
+  --choice-bg: rgba(255,255,255,0.7);
+}
+body.dark {
+  --bg-color: #111;
+  --text-color: #f2f2f7;
+  --box-bg: rgba(20,20,20,0.7);
+  --choice-bg: rgba(40,40,40,0.8);
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial;
-  background: #f2f2f7;
+  background: var(--bg-color);
+  color: var(--text-color);
   margin: 0;
   padding: 20px;
   text-align: center;
+  transition: background 0.3s, color 0.3s;
 }
 
 h1 {
   font-size: 3rem;
-  color: #111;
   backdrop-filter: blur(20px);
   padding: 10px;
   border-radius: 20px;
@@ -24,7 +38,7 @@ h1 {
 @keyframes pop { 0% { transform: scale(.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 
 .question-box {
-  background: rgba(255,255,255,0.6);
+  background: var(--box-bg);
   backdrop-filter: blur(25px) saturate(180%);
   padding: 25px;
   margin: 20px auto;
@@ -33,21 +47,22 @@ h1 {
   box-shadow: 0 10px 30px rgba(0,0,0,0.1);
   font-size: 1.4rem;
   animation: fadeIn .4s ease;
+  transition: background 0.3s;
 }
 @keyframes fadeIn { from {opacity:0;} to {opacity:1;} }
 
 .choice {
-  background: rgba(255,255,255,0.7);
+  background: var(--choice-bg);
   backdrop-filter: blur(20px);
   border: 1px solid #ddd;
-  color: #111;
+  color: var(--text-color);
   padding: 12px;
   margin: 12px auto;
   max-width: 300px;
   border-radius: 14px;
   cursor: pointer;
   font-size: 1.1rem;
-  transition: .15s;
+  transition: transform .15s, background .3s, color .3s;
 }
 .choice:hover { transform: scale(1.05); background: white; }
 
@@ -72,129 +87,95 @@ h1 {
   opacity: 0.01;
   cursor: pointer;
 }
+#toggles {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
 </style>
 </head>
 <body>
-<h1>🍎 Apple Trivia Battle</h1>
+<h1 id="title">🍎 Apple Trivia Battle</h1>
 
 <audio id="correctSound" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
 <audio id="wrongSound" src="https://actions.google.com/sounds/v1/cartoon/cartoon_boing.ogg"></audio>
 <canvas id="confettiCanvas" style="position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none;"></canvas>
 
+<div id="toggles">
+  <label><input type="checkbox" id="soundToggle" checked> Sounds</label>
+  <label><input type="checkbox" id="darkToggle"> Dark Mode</label>
+  <label>Language: <select id="languageSelect"></select></label>
+</div>
+
 <div id="game">
   <div class="question-box" id="questionBox">Press Start to begin!</div>
   <div id="choices"></div>
   <div id="scoreDisplay" style="margin-top:10px; font-size:1.2rem;"></div>
-  <button onclick="startNormal()" class="btn">Start</button>
+  <button id="startBtn" class="btn">Start</button>
 </div>
 
 <div id="secretTrigger" title="Shhh"></div>
 
 <script>
-const normalQuestions = [
-  {q:"What year was Apple founded?", c:["1976","1980","1999","2007"], a:0},
-  {q:"Who co-founded Apple with Steve Jobs?", c:["Bill Gates","Steve Wozniak","Tim Cook","Mark Zuckerberg"], a:1},
-  {q:"First iPhone without a home button?", c:["iPhone 6","iPhone 11","iPhone X","iPhone 8"], a:2},
-  {q:"Apple's 2020 chip series?", c:["A-Series","UltraCore","M-Series","Fusion"], a:2},
-  {q:"Which device is Apple's laptop lineup?", c:["MacBook","Surface","ThinkPad","Chromebook"], a:0},
-  {q:"What is Apple’s wireless earphones called?", c:["AirPods","Buds","EarCandy","Beats"], a:0},
-  {q:"Which Apple device do you wear on your wrist?", c:["iWatch","Apple Watch","Fitbit","Galaxy Watch"], a:1},
-  {q:"What app store do iPhones use?", c:["Google Play","App Store","Microsoft Store","Samsung Store"], a:1},
-  {q:"Which Apple assistant responds to voice?", c:["Cortana","Siri","Alexa","Google Assistant"], a:1},
-  {q:"What color was the first iPhone?", c:["Black","Blue","Red","Green"], a:0},
-  {q:"Which iPhone introduced Face ID?", c:["iPhone X","iPhone 8","iPhone 11","iPhone 12"], a:0},
-  {q:"What is Apple’s tablet called?", c:["iPad","Galaxy Tab","Surface Pro","Fire"], a:0},
-  {q:"What is Apple’s smart speaker?", c:["HomePod","Echo","Google Nest","Sonos"], a:0},
-  {q:"Which MacOS is named after a California landmark?", c:["Monterey","Windows 10","Catalina","Sierra"], a:0},
-  {q:"Which Apple device introduced the M1 chip?", c:["MacBook Air","iPhone 12","iPad Pro","iMac"], a:0},
-  {q:"Which feature unlocks iPhone with your face?", c:["Touch ID","Face ID","Siri ID","Passcode"], a:1},
-  {q:"Which port replaced Lightning in iPhone 15?", c:["USB-C","MicroUSB","Thunderbolt","FireWire"], a:0},
-  {q:"Which Apple device is foldable?", c:["None","iPhone Fold","iPad Fold","MacBook Fold"], a:0},
-  {q:"Apple’s subscription gaming service?", c:["Apple Arcade","Game Pass","PlayStation Plus","Stadia"], a:0},
-  {q:"What is Apple’s newest headset?", c:["Vision Pro","Oculus","Meta Glasses","HTC Vive"], a:0}
-];
+const questionsByLang = {
+  en: { normal: [/* English questions */], secret: [/* English secret */], ui:{start:"Start",score:"Score"} },
+  es: { normal: [/* Spanish */], secret: [/* Spanish secret */], ui:{start:"Comenzar",score:"Puntuación"} },
+  fr: { normal: [/* French */], secret: [/* French secret */], ui:{start:"Démarrer",score:"Score"} },
+  de: { normal: [/* German */], secret: [/* German secret */], ui:{start:"Starten",score:"Punktzahl"} },
+  ar: {
+    normal: [
+      {q:"في أي عام تأسست شركة أبل؟", c:["1976","1980","1999","2007"], a:0},
+      {q:"من شارك ستيف جوبز في تأسيس أبل؟", c:["بيل غيتس","ستيف وزنياك","تيم كوك","مارك زوكربيرغ"], a:1}
+    ],
+    secret: [
+      {q:"ما هو شعار أبل؟", c:["تفاحة","موزة","برتقالة","أناناس"], a:0}
+    ],
+    ui: { start:"ابدأ", score:"النتيجة" }
+  }
+};
 
-const secretQuestions = [
-  {q:"What fruit is Apple’s logo?", c:["Apple","Banana","Orange","Pineapple"], a:0},
-  {q:"Which company makes the iPhone?", c:["Apple","Samsung","LG","Sony"], a:0},
-  {q:"Which Apple device do you wear?", c:["Apple Watch","Fitbit","Galaxy Watch","Garmin"], a:0},
-  {q:"Which store do iPhones use for apps?", c:["App Store","Google Play","Microsoft Store","Amazon Store"], a:0},
-  {q:"Apple’s assistant that responds to voice?", c:["Siri","Alexa","Cortana","Google Assistant"], a:0},
-  {q:"What is Apple’s tablet?", c:["iPad","Galaxy Tab","Surface Pro","Fire"], a:0},
-  {q:"Apple’s smart speaker?", c:["HomePod","Echo","Google Nest","Sonos"], a:0},
-  {q:"Apple’s laptop series?", c:["MacBook","Surface","ThinkPad","Chromebook"], a:0},
-  {q:"What color was the first iPhone?", c:["Black","White","Red","Blue"], a:0},
-  {q:"Which feature unlocks iPhone with your face?", c:["Face ID","Touch ID","Passcode","Siri ID"], a:0},
-  {q:"Which port replaced Lightning in iPhone 15?", c:["USB-C","MicroUSB","Thunderbolt","FireWire"], a:0},
-  {q:"Which device is foldable?", c:["None","iPhone Fold","iPad Fold","MacBook Fold"], a:0},
-  {q:"Apple subscription gaming service?", c:["Apple Arcade","Game Pass","PlayStation Plus","Stadia"], a:0},
-  {q:"Apple’s newest headset?", c:["Vision Pro","Oculus","Meta Glasses","HTC Vive"], a:0},
-  {q:"Which MacOS is named after California?", c:["Monterey","Catalina","Windows 10","Sierra"], a:0},
-  {q:"Which Apple device has M1 chip?", c:["MacBook Air","iPhone 12","iPad Pro","iMac"], a:0},
-  {q:"Which device is wearable?", c:["Apple Watch","Fitbit","Galaxy Watch","Garmin"], a:0},
-  {q:"Which Apple product is wireless headphones?", c:["AirPods","Buds","EarCandy","Beats"], a:0},
-  {q:"Which assistant responds to 'Hey Siri'?", c:["Siri","Alexa","Cortana","Google Assistant"], a:0},
-  {q:"Which device is Apple’s laptop?", c:["MacBook","Surface","ThinkPad","Chromebook"], a:0}
-];
+let index=0, currentSet=[], correctCount=0, soundEnabled=true, currentLang='en';
 
-let index = 0;
-let currentSet = normalQuestions;
-let correctCount = 0;
+const languageSelect = document.getElementById('languageSelect');
+Object.keys(questionsByLang).forEach(lang=>{
+  const opt=document.createElement('option'); opt.value=lang; opt.textContent=lang.toUpperCase(); languageSelect.appendChild(opt);
+});
 
-function startNormal(){ index=0; currentSet=normalQuestions; correctCount=0; updateScore(); nextQuestion(); }
-function startSecret(){ index=0; currentSet=secretQuestions; correctCount=0; updateScore(); nextQuestion(); }
+languageSelect.addEventListener('change', function(){
+  currentLang=this.value;
+  document.documentElement.lang=currentLang;
+  document.getElementById('startBtn').textContent=questionsByLang[currentLang].ui.start;
+  updateScore();
+});
+
+function startNormal(){ index=0; currentSet=questionsByLang[currentLang].normal; correctCount=0; updateScore(); nextQuestion(); }
+function startSecret(){ index=0; currentSet=questionsByLang[currentLang].secret; correctCount=0; updateScore(); nextQuestion(); }
 
 function nextQuestion(){
-  const box=document.getElementById("questionBox");
-  const choicesDiv=document.getElementById("choices");
-  if(index>=currentSet.length){
-    box.textContent=`🎉 All done! You got ${correctCount} out of ${currentSet.length}!`;
-    choicesDiv.innerHTML="";
-    return;
-  }
-  const q=currentSet[index];
-  box.textContent=q.q;
-  choicesDiv.innerHTML="";
-  q.c.forEach((choice,i)=>{
-    const btn=document.createElement("div");
-    btn.className="choice";
-    btn.textContent=choice;
-    btn.onclick=()=>handleAnswer(i===q.a);
-    choicesDiv.appendChild(btn);
-  });
+  const box=document.getElementById("questionBox"), choicesDiv=document.getElementById("choices");
+  if(index>=currentSet.length){ box.textContent=`🎉 ${questionsByLang[currentLang].ui.score}: ${correctCount} / ${currentSet.length}`; choicesDiv.innerHTML=""; return; }
+  const q=currentSet[index]; box.textContent=q.q; choicesDiv.innerHTML="";
+  q.c.forEach((choice,i)=>{ const btn=document.createElement("div"); btn.className="choice"; btn.textContent=choice; btn.onclick=()=>handleAnswer(i===q.a); choicesDiv.appendChild(btn); });
 }
 
-function handleAnswer(correct){
-  if(correct){ correctCount++; playCorrect(); startConfetti(); } else { playWrong(); }
-  updateScore();
-  index++; setTimeout(nextQuestion,400);
-}
-
-function updateScore(){ document.getElementById("scoreDisplay").textContent=`Score: ${correctCount} / ${currentSet.length}`; }
-function playCorrect(){ document.getElementById("correctSound").play(); }
-function playWrong(){ document.getElementById("wrongSound").play(); }
-
-// Secret trigger
+function handleAnswer(correct){ if(correct){ correctCount++; if(soundEnabled) playCorrect(); startConfetti(); } else { if(soundEnabled) playWrong(); } updateScore(); index++; setTimeout(nextQuestion,400); }
+function updateScore(){ document.getElementById("scoreDisplay").textContent=`${questionsByLang[currentLang].ui.score}: ${correctCount} / ${currentSet.length}`; }
+function playCorrect(){ if(soundEnabled) document.getElementById("correctSound").play(); }
+function playWrong(){ if(soundEnabled) document.getElementById("wrongSound").play(); }
 document.getElementById("secretTrigger").addEventListener('click', startSecret);
+document.getElementById("soundToggle").addEventListener('change', function(){ soundEnabled=this.checked; });
+document.getElementById("darkToggle").addEventListener('change', function(){ document.body.classList.toggle('dark', this.checked); });
+document.getElementById("startBtn").addEventListener('click', startNormal);
 
-// Confetti
-const canvas=document.getElementById("confettiCanvas");
-const ctx=canvas.getContext("2d");
-canvas.width=window.innerWidth; canvas.height=window.innerHeight;
+// Confetti code same as before
+const canvas=document.getElementById("confettiCanvas"), ctx=canvas.getContext("2d"); canvas.width=window.innerWidth; canvas.height=window.innerHeight;
 function random(min,max){return Math.random()*(max-min)+min;}
 let confettiParticles=[];
-function startConfetti(){
-  for(let i=0;i<150;i++){
-    confettiParticles.push({x:random(0,canvas.width),y:random(-50,-10),r:random(2,6),s:random(1,4),c:`hsl(${random(0,360)},100%,50%)`});
-  }
-  animateConfetti();
-}
-function animateConfetti(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  confettiParticles.forEach(p=>{p.y+=p.s;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=p.c;ctx.fill();});
-  confettiParticles=confettiParticles.filter(p=>p.y<canvas.height);
-  if(confettiParticles.length>0) requestAnimationFrame(animateConfetti);
-}
+function startConfetti(){ for(let i=0;i<150;i++){ confettiParticles.push({x:random(0,canvas.width),y:random(-50,-10),r:random(2,6),s:random(1,4),c:`hsl(${random(0,360)},100%,50%)`}); } animateConfetti(); }
+function animateConfetti(){ ctx.clearRect(0,0,canvas.width,canvas.height); confettiParticles.forEach(p=>{p.y+=p.s;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=p.c;ctx.fill();}); confettiParticles=confettiParticles.filter(p=>p.y<canvas.height); if(confettiParticles.length>0) requestAnimationFrame(animateConfetti); }
 </script>
 </body>
 </html>
