@@ -1,128 +1,230 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Apple Trivia Battle</title>
-    <style>
-        /* Basic styles for animations */
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial;
-            background: #111;
-            color: #f2f2f7;
-            margin: 0;
-            overflow: hidden;
-            transition: background 0.3s;
-            text-align: center;
-        }
-        #apple-logo, #lockscreen, #quizContainer {
-            display: none;
-        }
-        #apple-logo {
-            font-size: 3rem;
-            animation: logoAnimation 2s ease-in-out forwards;
-        }
-        @keyframes logoAnimation {
-            0% { opacity: 0; }
-            50% { opacity: 1; }
-            100% { opacity: 0; }
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apple Trivia</title>
 
-        /* Mobile and Desktop Lock Screens */
-        #lockscreen {
-            background-color: #1d1d1f;
-            width: 100vw;
-            height: 100vh;
-            position: fixed;
-            top: 0;
-            left: 0;
-            color: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 2rem;
-            animation: fadeIn 1s ease forwards;
-        }
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:black;
+  color:white;
+  font-family:-apple-system,BlinkMacSystemFont;
+  overflow:hidden;
+}
+.screen{
+  position:fixed;
+  inset:0;
+  display:none;
+  justify-content:center;
+  align-items:center;
+  flex-direction:column;
+}
+.active{display:flex}
 
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
+/* 🍎 BOOT */
+#apple{font-size:90px}
+#bar{
+  width:220px;height:6px;
+  background:#333;border-radius:10px;
+  margin-top:20px;overflow:hidden
+}
+#bar span{
+  display:block;height:100%;
+  background:white;width:0%;
+  animation:load 3s forwards
+}
+@keyframes load{to{width:100%}}
 
-        /* Button styles */
-        .unlockBtn {
-            padding: 15px 30px;
-            background: #0071e3;
-            color: white;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-        .unlockBtn:hover {
-            background: #0061c2;
-        }
+/* 🔒 LOCK */
+#lock{
+  background:linear-gradient(#111,#000);
+  text-align:center
+}
+#time{font-size:48px;margin-bottom:10px}
+#hint{opacity:.6;margin-bottom:20px}
+#pfp{
+  width:90px;height:90px;
+  border-radius:50%;
+  background:#555;
+  margin-bottom:15px
+}
 
-        /* Quiz Container (hidden until unlock) */
-        #quizContainer {
-            display: block;
-            padding: 20px;
-            margin-top: 20px;
-        }
-        /* Dark Mode Style */
-        body.dark {
-            background-color: #111;
-            color: #f2f2f7;
-        }
-    </style>
+/* PIN / PASSWORD */
+#dots{font-size:30px;letter-spacing:8px}
+.pad{
+  display:grid;
+  grid-template-columns:repeat(3,70px);
+  gap:12px;
+  margin-top:20px
+}
+.key{
+  background:#222;border-radius:50%;
+  height:70px;display:flex;
+  align-items:center;justify-content:center;
+  font-size:22px;cursor:pointer
+}
+.key:hover{background:#333}
+
+/* FACE ID */
+#face{
+  width:90px;height:90px;
+  border:4px solid white;
+  border-radius:20px;
+  position:relative;
+  display:none;
+  margin-top:20px
+}
+.scan{
+  position:absolute;
+  width:100%;height:6px;
+  background:#0f0;
+  animation:scan 1s infinite
+}
+@keyframes scan{
+  from{top:0}to{top:80px}
+}
+
+/* 🎮 QUIZ */
+#quiz{
+  background:#111;
+  padding:20px
+}
+.choice{
+  background:#222;
+  padding:14px;
+  border-radius:14px;
+  margin:8px;
+  width:260px;
+  cursor:pointer
+}
+.choice:hover{background:#333}
+</style>
 </head>
-<body class="dark">
 
-    <!-- Apple Boot Logo -->
-    <div id="apple-logo">🍏 Apple Logo</div>
+<body>
 
-    <!-- Lock Screen (Mobile and Desktop) -->
-    <div id="lockscreen">
-        <div>
-            <div id="lockScreenTitle">Unlock Your Device</div>
-            <button class="unlockBtn" id="unlockBtn">Unlock</button>
-        </div>
-    </div>
+<!-- 🔊 SOUNDS -->
+<audio id="bootChime" src="https://actions.google.com/sounds/v1/ambiences/computer_startup.ogg"></audio>
 
-    <!-- Quiz Container -->
-    <div id="quizContainer">
-        <h1 id="title">🍎 Apple Trivia Battle</h1>
-        <button id="startBtn" class="btn">Start</button>
-    </div>
+<!-- 🍎 BOOT -->
+<div id="boot" class="screen active">
+  <div id="apple">🍎</div>
+  <div id="bar"><span></span></div>
+</div>
 
-    <script>
-        // Handle Mobile and Desktop Views
-        const isMobile = window.innerWidth <= 768;  // Simple mobile check
-        const appleLogo = document.getElementById('apple-logo');
-        const lockscreen = document.getElementById('lockscreen');
-        const unlockBtn = document.getElementById('unlockBtn');
-        const quizContainer = document.getElementById('quizContainer');
+<!-- 🔒 LOCK -->
+<div id="lock" class="screen">
+  <div id="time"></div>
+  <div id="pfp"></div>
+  <div id="hint">Try to enter 1111</div>
+  <div id="dots"></div>
+  <div class="pad" id="pad"></div>
+  <div id="face">
+    <div class="scan"></div>
+  </div>
+</div>
 
-        // Show Apple logo initially
-        setTimeout(() => {
-            appleLogo.style.display = 'block'; // Show logo
-            setTimeout(() => {
-                appleLogo.style.display = 'none'; // Hide logo after animation
-                lockscreen.style.display = 'flex'; // Show lockscreen
-            }, 2000); // Time the logo animation
-        }, 500);
+<!-- 🎮 QUIZ -->
+<div id="quiz" class="screen">
+  <h2>🍎 Apple Trivia</h2>
+  <div id="q"></div>
+  <div id="choices"></div>
+  <div id="score"></div>
+</div>
 
-        // Unlock Button Action
-        unlockBtn.addEventListener('click', function () {
-            lockscreen.style.display = 'none'; // Hide lockscreen
-            quizContainer.style.display = 'block'; // Show quiz container
-        });
+<script>
+const isMobile = innerWidth < 768;
+const correctCode = "1111";
+let entered = "";
 
-        // Start Button action
-        document.getElementById('startBtn').addEventListener('click', function () {
-            alert("Game Starting...");
-            // Here you can start your trivia game logic
-        });
+/* TIME */
+setInterval(()=>{
+  const d=new Date();
+  document.getElementById("time").textContent =
+    d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+},1000);
 
-    </script>
+/* SOUND ENABLE */
+document.body.onclick=()=>document.getElementById("bootChime").play();
+
+/* BOOT → LOCK */
+setTimeout(()=>{
+  document.getElementById("boot").classList.remove("active");
+  document.getElementById("lock").classList.add("active");
+},3000);
+
+/* INPUT UI */
+const dots=document.getElementById("dots");
+const pad=document.getElementById("pad");
+if(isMobile){
+  for(let i=1;i<=9;i++)pad.innerHTML+=`<div class=key>${i}</div>`;
+  pad.innerHTML+=`<div></div><div class=key>0</div><div></div>`;
+}else{
+  dots.textContent="";
+  let iv=setInterval(()=>{
+    dots.textContent+="•";
+    if(dots.textContent.length===4){
+      clearInterval(iv);
+      unlock();
+    }
+  },400);
+}
+
+/* PIN */
+pad.onclick=e=>{
+  if(!e.target.classList.contains("key"))return;
+  entered+=e.target.textContent;
+  dots.textContent="•".repeat(entered.length);
+  if(entered.length===4){
+    if(entered===correctCode){
+      face.style.display="block";
+      setTimeout(unlock,1200);
+    }else{
+      entered="";
+      dots.textContent="";
+    }
+  }
+};
+
+/* UNLOCK */
+function unlock(){
+  lock.classList.remove("active");
+  quiz.classList.add("active");
+  load();
+}
+
+/* QUIZ */
+let Q=[
+ {q:"Apple logo is a?",c:["Banana","Apple","Pear","Orange"],a:1},
+ {q:"Who founded Apple?",c:["Jobs","Gates","Elon","Mark"],a:0},
+ {q:"iPhone OS?",c:["Android","iOS","Linux","Win"],a:1}
+];
+while(Q.length<20)Q.push(Q[Q.length%3]);
+let i=0,s=0;
+
+function load(){
+  const q=Q[i];
+  document.getElementById("q").textContent=q.q;
+  const c=document.getElementById("choices");
+  c.innerHTML="";
+  q.c.forEach((t,x)=>{
+    const d=document.createElement("div");
+    d.className="choice";
+    d.textContent=t;
+    d.onclick=()=>{
+      if(x===q.a)s++;
+      i++;
+      i<20?load():
+        document.getElementById("q").textContent=`Score ${s}/20`;
+    };
+    c.appendChild(d);
+  });
+  document.getElementById("score").textContent=`${s}/20`;
+}
+</script>
+
 </body>
 </html>
